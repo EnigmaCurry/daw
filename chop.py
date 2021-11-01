@@ -2,11 +2,16 @@ import os
 import math
 import random
 import itertools
+import time
+import uuid
 from pydub import AudioSegment
 from pydub.playback import play
 
 import calc
 import pattern
+
+class AudioFormatException(Exception):
+    pass
 
 def load_audio(path):
     path_parts = path.split(".")
@@ -18,35 +23,88 @@ def load_audio(path):
         os.path.expanduser(path), format=format)
     return track
 
-def chop(audio, bpm, bars, beats=4):
-    bar_ms = calc.bpm(bpm).beat_ms * beats
+def save_audio(audio, path):
+    path_parts = path.split(".")
+    if len(path_parts) > 1:
+        format = path_parts[-1]
+    else:
+        raise AudioFormatException('Must specify format in file extension.')
+    audio.export(os.path.expanduser(path), format=format)
+    print(f"Saved {path}")
+
+def chop(audio, bpm, bars, beats=4, fade_in=0, fade_out=0):
+    segment_ms = round(calc.bpm(bpm).beat_ms * beats * bars)
     total_bars = calc.count_bars(audio.duration_seconds*1000, bpm, beats)
+    total_segments = math.ceil(total_bars / bars)
+    print(f"Chopping audio: {segment_ms}ms * {total_segments}, fade_in={fade_in}")
     sections = []
-    for i in range(math.ceil(total_bars / bars)):
-        sections.append(audio[i * bars * bar_ms:
-                              i * bars * bar_ms + bars * bar_ms])
+    for i in range(total_segments):
+        offset = fade_in if i > 0 else 0
+        sections.append(audio[(i * segment_ms) - offset:
+                              (i * segment_ms + segment_ms)])
+        if fade_out != 0:
+            sections[i] = sections[i].fade_out(fade_out)
     return sections
 
-def sequence(slices, seq):
-    return sum([slices[s] for s in seq])
+def reduce_slices(slices):
+    def chunks(lst, n):
+        for i in range(0,len(lst), n):
+            yield lst[i:i+n]
+    def reduce(slices):
+        new_slices = []
+        for slice_pair in chunks(slices, 2):
+            if len(slice_pair) > 1:
+                new_slices.append(slice_pair[0] + slice_pair[1])
+            else:
+                new_slices.append(slice_pair[0])
+        if len(new_slices) == 1:
+            return new_slices
+        else:
+            return reduce(new_slices)
+    print(f"Reducing {len(slices)} slices into one audio segment ...")
+    return reduce(slices)[0]
+
+def sequence(slices, seq, fade_in=0):
+    print(f"Sequencing {len(seq)} segments ...")
+    # Overlay the segments:
+    last_slice = slices[0]
+    seq_slices = [slices[i] for i in seq]
+    mix_slices = []
+    for i, (s, s2) in enumerate(zip(seq_slices, seq_slices[1:-1] + [seq_slices[0]])):
+        if fade_in > 0 and i > 0:
+            pos = len(s) - fade_in
+            if len(s) > 0:
+                s = s.overlay(s2, position=pos)
+        mix_slices.append(s)
+        last_slice = s
+    new_audio = reduce_slices(mix_slices[:3000])
+    return new_audio
 
 def test():
-    # https://soundcloud.com/pablomoretti/percussion-mantra-open-collab
-    track = load_audio("~/Music/pablo-reflective-perc.wav")
-    bpm = 160
-    bars = 0.5
-    slices = chop(track, bpm, bars)
-    # parts = sum((
-    #     ((67, 66) * 3 + (67, 67)) * 2,
-    #     ((29, 90) * 3 + (29, 91)) * 2,
-    #     ((67, 93) * 3 + (67, 94)) * 4,
-    # ), ()) * 1
-    #pat = list(itertools.chain(*pattern.random_twiddle(20, len(slices))))
-    pat=[64, 108, 64, 108, 64, 108, 64, 108, 172, 130, 172, 130, 172, 130, 172, 130, 83, 28, 83, 28, 83, 28, 83, 28, 144, 92, 144, 92, 144, 92, 144, 92, 10, 183, 10, 183, 10, 183, 10, 183, 61, 168, 61, 168, 61, 168, 61, 168, 63, 6, 63, 6, 63, 6, 63, 6, 103, 89, 103, 89, 103, 89, 103, 89, 130, 22, 130, 22, 130, 22, 130, 22, 81, 91, 81, 91, 81, 91, 81, 91, 126, 73, 126, 73, 126, 73, 126, 73, 31, 66, 31, 66, 31, 66, 31, 66, 145, 74, 145, 74, 145, 74, 145, 74, 105, 90, 105, 90, 105, 90, 105, 90, 187, 148, 187, 148, 187, 148, 187, 148, 77, 41, 77, 41, 77, 41, 77, 41, 119, 100, 119, 100, 119, 100, 119, 100, 146, 118, 146, 118, 146, 118, 146, 118, 167, 28, 167, 28, 167, 28, 167, 28, 160, 184, 160, 184, 160, 184, 160, 184]
+    track = load_audio("~/Music/myst-place of what 2.wav")
+    bpm = 70
+    fade_in = 30
+    fade_out = 60
+    date = time.strftime("%y-%m-%d")
+    rnd_str = str(uuid.uuid1())[:5]
+    out_format="mp3"
+    out_filename=f"{date}-chop.{rnd_str}.{out_format}"
+
+    bars = 1/64
+    slices = chop(track, bpm, bars, fade_in=fade_in, fade_out=fade_out)
+    num_slices = len(slices)
+    pat = list(range(num_slices))
+    pat = list((x+random.choice(range(4)),
+                x+random.choice(range(4)),
+                x+random.choice(range(4)),
+                x+random.choice(range(4))) for x in pat)
+    pat = list(itertools.chain(*pat))
+    pat = pat[:-32]
     print(pat)
-    new_track = sequence(slices, pat)
-    new_track.export("perc2.wav", format="wav")
-    #play(new_track)
+    new_track = sequence(slices, pat, fade_in)
+    save_audio(new_track, out_filename)
+    print("playing ... ")
+    play(new_track)
 
 if __name__ == "__main__":
     test()

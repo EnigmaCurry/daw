@@ -6,5 +6,5 @@ def sliding(limit):
 
 def random_twiddle(limit, max):
     for i in range(limit):
-        yield (random.randint(0, max), random.randint(0, max)) * 4
+        yield (random.randint(0, max), random.randint(0, max), random.randint(0, max), random.randint(0, max)) * random.choice((2, 4))
 
