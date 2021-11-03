@@ -5,7 +5,8 @@ import itertools
 import time
 import uuid
 from pydub import AudioSegment
-from pydub.playback import play
+from pydub.playback import play as pydub_play
+from pydub.exceptions import TooManyMissingFrames
 
 import calc
 import pattern
@@ -31,6 +32,10 @@ def save_audio(audio, path):
         raise AudioFormatException('Must specify format in file extension.')
     audio.export(os.path.expanduser(path), format=format)
     print(f"Saved {path}")
+
+def play(audio):
+    print("playing ... ")
+    pydub_play(audio)
 
 def chop(audio, bpm, bars, beats=4, fade_in=0, fade_out=0):
     segment_ms = round(calc.bpm(bpm).beat_ms * beats * bars)
@@ -74,36 +79,34 @@ def sequence(slices, seq, fade_in=0):
         if fade_in > 0 and i > 0:
             pos = len(s) - fade_in
             if len(s) > 0:
-                s = s.overlay(s2, position=pos)
+                try:
+                    s = s.overlay(s2, position=pos)
+                except TooManyMissingFrames:
+                    break
         mix_slices.append(s)
         last_slice = s
     new_audio = reduce_slices(mix_slices[:3000])
     return new_audio
 
 def test():
-    track = load_audio("~/Music/myst-place of what 2.wav")
-    bpm = 70
-    fade_in = 30
-    fade_out = 60
+    track = load_audio("~/Music/the city - myrcury.wav")
+    bpm = 147
     date = time.strftime("%y-%m-%d")
     rnd_str = str(uuid.uuid1())[:5]
     out_format="mp3"
     out_filename=f"{date}-chop.{rnd_str}.{out_format}"
 
-    bars = 1/64
+    bars = 0.0625
+    fade_in = 1
+    fade_out = int(20 * bpm * bars)
     slices = chop(track, bpm, bars, fade_in=fade_in, fade_out=fade_out)
     num_slices = len(slices)
     pat = list(range(num_slices))
-    pat = list((x+random.choice(range(4)),
-                x+random.choice(range(4)),
-                x+random.choice(range(4)),
-                x+random.choice(range(4))) for x in pat)
     pat = list(itertools.chain(*pat))
     pat = pat[:-32]
-    print(pat)
     new_track = sequence(slices, pat, fade_in)
-    save_audio(new_track, out_filename)
-    print("playing ... ")
+    new_track.overlay(new_track.invert_phase(), position=10)
+    #save_audio(new_track, "~/Music/21-11-01.e.the-city.chop.wav")
     play(new_track)
 
 if __name__ == "__main__":
