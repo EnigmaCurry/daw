@@ -11,33 +11,7 @@ from pydub.exceptions import TooManyMissingFrames
 from . import calc
 from . import pattern
 
-class AudioFormatException(Exception):
-    pass
-
-def load_audio(path):
-    path_parts = path.split(".")
-    if len(path_parts) > 1:
-        format = path_parts[-1]
-    else:
-        format = "wav"
-    track = AudioSegment.from_file(
-        os.path.expanduser(path), format=format)
-    return track
-
-def save_audio(audio, path):
-    path_parts = path.split(".")
-    if len(path_parts) > 1:
-        format = path_parts[-1]
-    else:
-        raise AudioFormatException('Must specify format in file extension.')
-    audio.export(os.path.expanduser(path), format=format)
-    print(f"Saved {path}")
-
-def play(audio):
-    print("playing ... ")
-    pydub_play(audio)
-
-def chop(audio, bpm, bars, beats=4, fade_in=0, fade_out=0):
+def chop(audio: AudioSegment, bpm, bars, beats=4, fade_in=0, fade_out=0):
     segment_ms = round(calc.bpm(bpm).beat_ms * beats * bars)
     total_bars = calc.count_bars(audio.duration_seconds*1000, bpm, beats)
     total_segments = math.ceil(total_bars / bars)
@@ -70,12 +44,12 @@ def reduce_slices(slices):
     return reduce(slices)[0]
 
 def sequence(slices, seq, fade_in=0):
-    print(f"Sequencing {len(seq)} segments ...")
+    print(f"Sequencing {len(seq)} segments: {seq}")
     # Overlay the segments:
     last_slice = slices[0]
     seq_slices = [slices[i] for i in seq]
     mix_slices = []
-    for i, (s, s2) in enumerate(zip(seq_slices, seq_slices[1:-1] + [seq_slices[0]])):
+    for i, (s, s2) in enumerate(zip(seq_slices, seq_slices[1:] + [seq_slices[0]])):
         if fade_in > 0 and i > 0:
             pos = len(s) - fade_in
             if len(s) > 0:
@@ -85,10 +59,11 @@ def sequence(slices, seq, fade_in=0):
                     break
         mix_slices.append(s)
         last_slice = s
-    new_audio = reduce_slices(mix_slices[:3000])
+    new_audio = reduce_slices(mix_slices)
     return new_audio
 
 def test():
+    from .audio import load_audio, save_audio, play
     track = load_audio("~/Music/the city - myrcury.wav")
     bpm = 147
     date = time.strftime("%y-%m-%d")

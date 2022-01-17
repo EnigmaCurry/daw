@@ -1,5 +1,6 @@
 /__pycache__/
-/*.wav
+*.wav
+*.mp3
 /build/
 /daw.egg-info/
 daw/__pycache__

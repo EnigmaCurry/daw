@@ -7,13 +7,24 @@ license = "MIT"
 build = "build.py"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 pydub = "^0.25.1"
 simpleaudio = "^1.0.4"
 Cython = "^0.29.24"
 
 [tool.poetry.dev-dependencies]
+mypy = "^0.931"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "cython"]
 build-backend = "poetry.masonry.api"
+
+[[tool.mypy.overrides]]
+## Ignore type information for the following modules:
+module = [
+    "pydub",
+    "pydub.playback",
+    "pydub.exceptions"
+]
+ignore_missing_imports = true
+
