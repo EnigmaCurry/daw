@@ -15,7 +15,7 @@ def seq_two(limit):
 def seq_three(limit):
     return [[i] for i in range(limit)]
 
-def munge_slices(slices):
+def munge1(slices):
     new_slices = []
     for i,s in enumerate(slices):
         if i % 2 == 0:
@@ -28,24 +28,21 @@ def munge_slices(slices):
         new_slices.append(s)
     return new_slices
 
-def liar(audio_file, bpm, pattern_func):
-    audio = load_audio(audio_file)
-    bars = 1/16
+def seq_audio(audio, bpm, bars, pattern_func):
     slices = chop(audio, bpm, bars, fade_in=0, fade_out=0)
-    slices = munge_slices(slices)
+    #slices = munge1(slices)
 
     pat = pattern_func(len(slices))
     flattened = [item for sublist in pat for item in sublist][8:]
     seq = sequence(slices, flattened)
     return seq
 
-def save(seq):
-    date = time.strftime("%y-%m-%d")
-    rnd_str = str(uuid.uuid1())[:5]
-    print("Length: ",time.strftime('%H:%M:%S', time.gmtime(seq.duration_seconds)))
-    save_audio(seq, f"~/Music/{date}-sci-liar-{rnd_str}.wav")
+def liar():
+    audio=load_audio("Liar.mp3")
+    slices = chop(audio, 120, 4)
+    seq = sequence(slices, [0])
+    return seq
 
 if __name__ == "__main__":
-    seq = liar(audio_file="Liar.mp3", bpm=120, pattern_func=seq_two)
-    seq = stretch(seq, 1.7)
-    play(seq)
+    seq = liar()
+    save_audio(seq, "~/Music")

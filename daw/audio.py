@@ -1,3 +1,5 @@
+import uuid
+import time
 import os
 import io
 import wave
@@ -17,18 +19,22 @@ def load_audio(path: str) -> AudioSegment:
         os.path.expanduser(path), format=format)
     return track
 
-def save_audio(audio: AudioSegment, path: str):
+def play(audio: AudioSegment):
+    print("Playing: ",time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds)))
+    pydub_play(audio)
+
+def save_audio(seq, directory, prefix=""):
+    date = time.strftime("%y-%m-%d")
+    rnd_str = str(uuid.uuid1())[:5]
+    prefix = f"-{prefix}-" if len(prefix) else "-"
+    path = os.path.join(directory, f"{date}{prefix}{rnd_str}.wav")
     path_parts = path.split(".")
     if len(path_parts) > 1:
         format = path_parts[-1]
     else:
         raise AudioFormatException('Must specify format in file extension.')
-    audio.export(os.path.expanduser(path), format=format)
+    seq.export(os.path.expanduser(path), format=format)
     print(f"Saved {path}")
-
-def play(audio: AudioSegment):
-    print("playing ... ")
-    pydub_play(audio)
 
 def stretch(audio: AudioSegment, factor):
     orig_frame_rate = audio.frame_rate

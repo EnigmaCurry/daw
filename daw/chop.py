@@ -81,7 +81,7 @@ def test():
     pat = pat[:-32]
     new_track = sequence(slices, pat, fade_in)
     new_track.overlay(new_track.invert_phase(), position=10)
-    #save_audio(new_track, "~/Music/21-11-01.e.the-city.chop.wav")
+    #save_audio(new_track, "~/Music", "21-11-01.e.the-city.chop")
     play(new_track)
 
 if __name__ == "__main__":
