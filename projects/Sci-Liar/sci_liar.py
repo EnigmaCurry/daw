@@ -2,7 +2,8 @@ import random
 import time
 import uuid
 from daw.audio import load_audio, save_audio, play, stretch
-from daw.chop import chop, sequence
+from daw.chop import chop, reduce_slices, sequence
+from daw.pattern import flatten
 
 def seq_one(limit):
     s = lambda x: [x*12, x*13] * 2 + [x*14, x*15] * 2
@@ -28,21 +29,35 @@ def munge1(slices):
         new_slices.append(s)
     return new_slices
 
-def seq_audio(audio, bpm, bars, pattern_func):
-    slices = chop(audio, bpm, bars, fade_in=0, fade_out=0)
-    #slices = munge1(slices)
-
-    pat = pattern_func(len(slices))
-    flattened = [item for sublist in pat for item in sublist][8:]
-    seq = sequence(slices, flattened)
-    return seq
-
-def liar():
-    audio=load_audio("Liar.mp3")
+def liar1(audio):
     slices = chop(audio, 120, 4)
-    seq = sequence(slices, [0])
-    return seq
+    s8 = sequence(slices, [8])
+    s8_0, s8_1 = chop(s8, 120, 2)
+    s8b = flatten(zip(reversed(chop(s8_0, 120, 1/8)), chop(s8_1*2, 120, 1/8)))
+    return reduce_slices([s8_0, reduce_slices(s8b)])
+
+def liar2(audio, i=16):
+    slices = chop(audio, 120, 4)
+    s8 = sequence(slices, [i])
+    s8_0, s8_1 = chop(s8, 120, 2)
+    s8b = flatten(zip(reversed(chop(s8_0, 120, 1/8)), reversed(chop(s8_1*2, 120, 1/8))))
+    return reduce_slices([s8_0, reduce_slices(s8b)])
+
+def liar3(audio, i=8):
+    slices = chop(audio, 120, 4)
+    s8 = sequence(slices, [i])
+    s8_0, s8_1 = chop(s8, 120, 2)
+    s8_0_slow = stretch(reduce_slices([s8_0]), 2)
+    return s8_0_slow + s8_0_slow.reverse()
+
 
 if __name__ == "__main__":
-    seq = liar()
-    save_audio(seq, "~/Music")
+    audio = load_audio("Liar.mp3")
+    a = liar3(audio, 7)
+    b = reduce_slices([liar2(audio), liar1(audio).reverse(), ])
+    c = liar3(audio, 8)
+    d = reduce_slices([liar2(audio, 8), liar1(audio).reverse(), ])
+
+    new_audio = reduce_slices([a, b, c, d])
+    save_audio(new_audio, "~/Music", "sci-liar")
+    #play(new_audio)

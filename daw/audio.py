@@ -23,7 +23,7 @@ def play(audio: AudioSegment):
     print("Playing: ",time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds)))
     pydub_play(audio)
 
-def save_audio(seq, directory, prefix=""):
+def save_audio(audio, directory, prefix=""):
     date = time.strftime("%y-%m-%d")
     rnd_str = str(uuid.uuid1())[:5]
     prefix = f"-{prefix}-" if len(prefix) else "-"
@@ -33,7 +33,7 @@ def save_audio(seq, directory, prefix=""):
         format = path_parts[-1]
     else:
         raise AudioFormatException('Must specify format in file extension.')
-    seq.export(os.path.expanduser(path), format=format)
+    audio.export(os.path.expanduser(path), format=format)
     print(f"Saved {path}")
 
 def stretch(audio: AudioSegment, factor):
