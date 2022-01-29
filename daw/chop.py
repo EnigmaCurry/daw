@@ -11,11 +11,14 @@ from pydub.exceptions import TooManyMissingFrames
 from . import calc
 from . import pattern
 
+import logging
+logger = logging.getLogger(__name__)
+
 def chop(audio: AudioSegment, bpm, bars, beats=4, fade_in=0, fade_out=0):
     segment_ms = round(calc.bpm(bpm).beat_ms * beats * bars)
     total_bars = calc.count_bars(audio.duration_seconds*1000, bpm, beats)
     total_segments = math.ceil(total_bars / bars)
-    print(f"Chopping audio: {segment_ms}ms * {total_segments}, fade_in={fade_in}")
+    logger.info(f"Chopping audio: {segment_ms}ms * {total_segments}, fade_in={fade_in}")
     sections = []
     for i in range(total_segments):
         offset = fade_in if i > 0 else 0
@@ -40,11 +43,11 @@ def reduce_slices(slices):
             return new_slices
         else:
             return reduce(new_slices)
-    print(f"Reducing {len(slices)} slices into one audio segment ...")
+    logger.info(f"Reducing {len(slices)} slices into one audio segment ...")
     return reduce(slices)[0]
 
 def sequence(slices, seq, fade_in=0):
-    print(f"Sequencing {len(seq)} segments: {seq}")
+    logger.info(f"Sequencing {len(seq)} segments: {seq}")
     # Overlay the segments:
     last_slice = slices[0]
     seq_slices = [slices[i] for i in seq]

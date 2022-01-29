@@ -5,6 +5,9 @@ from .audio import load_audio, play
 note_pattern = re.compile('([A-G]#?)(-?[0-9])')
 note_names = ['A','A#','B','C','C#','D','D#', 'E','F','F#','G','G#']
 
+import logging
+logger = logging.getLogger(__name__)
+
 class NoteParseError(Exception):
     pass
 class ChromaticGapError(Exception):
@@ -18,7 +21,7 @@ def load_samples(directory, chromatic=False):
     """
     samples={}
     files = sorted([f for f in os.listdir(directory) if f.lower().endswith('.wav')])
-    print(f"Loading {len(files)} samples from {directory} ... ")
+    logger.info(f"Loading {len(files)} samples from {directory} ... ")
     if chromatic:
         note_files = order_names_chromatic(files)
         files = [f['name'] for f in note_files]

@@ -6,6 +6,9 @@ import wave
 from pydub import AudioSegment
 from pydub.playback import play as pydub_play
 
+import logging
+logger = logging.getLogger(__name__)
+
 class AudioFormatException(Exception):
     pass
 
@@ -20,7 +23,7 @@ def load_audio(path: str) -> AudioSegment:
     return track
 
 def play(audio: AudioSegment):
-    print("Playing: ",time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds)))
+    logger.info(f"Playing: {time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds))}")
     pydub_play(audio)
 
 def save_audio(audio, directory, prefix=""):
@@ -34,7 +37,7 @@ def save_audio(audio, directory, prefix=""):
     else:
         raise AudioFormatException('Must specify format in file extension.')
     audio.export(os.path.expanduser(path), format=format)
-    print(f"Saved {path}")
+    logger.info(f"Saved {path}")
 
 def stretch(audio: AudioSegment, factor):
     orig_frame_rate = audio.frame_rate
