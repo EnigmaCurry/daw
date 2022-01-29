@@ -50,6 +50,8 @@ def liar3(audio, i=8):
     s8_0_slow = stretch(reduce_slices([s8_0]), 2)
     return s8_0_slow + s8_0_slow.reverse()
 
+def liar4(audio1, audio2):
+    return 
 
 if __name__ == "__main__":
     audio = load_audio("Liar.mp3")
@@ -58,6 +60,12 @@ if __name__ == "__main__":
     c = liar3(audio, 8)
     d = reduce_slices([liar2(audio, 8), liar1(audio).reverse(), ])
 
-    new_audio = reduce_slices([a, b, c, d])
-    save_audio(new_audio, "~/Music", "sci-liar")
-    #play(new_audio)
+    e = reduce_slices([a, b, c, d])
+    f = e.pan(-0.5).overlay(e.reverse().pan(+0.5))
+    g = stretch(f, 0.7) * 2
+    h = g.pan(-0.5).overlay(g.reverse().pan(+0.5))
+
+    new_audio = a
+    
+    #save_audio(new_audio, "~/Music", "sci-liar")
+    play(new_audio)

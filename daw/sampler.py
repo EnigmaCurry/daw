@@ -1,6 +1,6 @@
 import re
 import os
-from audio import load_audio, play
+from .audio import load_audio, play
 
 note_pattern = re.compile('([A-G]#?)(-?[0-9])')
 note_names = ['A','A#','B','C','C#','D','D#', 'E','F','F#','G','G#']
@@ -60,13 +60,6 @@ def order_names_chromatic(names):
     """
     Order a list of sample names, looking for a chromatic key name (eg. C#3)
     """
-    notes = []
-    for name in names:
-        parsed_note = parse_note(name)
-        notes.append({'name': name, 'note': parsed_note[0], 'octave': parsed_note[1]})
-    return sorted(notes, key=lambda n: (n['octave'], n['note']))
-
-if __name__ == '__main__':
-    sample_root = '/home/ryan/Samples From Mars/extracted/Wasp From Mars'
-    samples = load_samples(os.path.join(sample_root, '2SAWS'), chromatic=True)
-    print(samples)
+    return sorted([{'name': name, 'note': parsed_note[0], 'octave': parsed_note[1]} \
+                     for name, parsed_note in [(name, parse_note(name)) for name in names]],
+                    key=lambda n: (n['octave'], n['note']))
