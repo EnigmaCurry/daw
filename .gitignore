@@ -6,3 +6,4 @@
 daw/__pycache__
 daw/*.so
 daw/*.c
+dist
