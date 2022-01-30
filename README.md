@@ -26,7 +26,7 @@ git clone https://github.com/EnigmaCurry/daw.git ~/git/vendor/enigmacurry/daw
 Create a `shell_container` alias for the daw. Call it `daw`:
 
 ```
-alias daw='shell_container docker=podman template=daw builddir=${HOME}/git/vendor/enigmacurry/daw dockerfile=${HOME}/git/vendor/enigmacurry/daw/Dockerfile docker_args="--volume=/run/user/$(id -u)/pulse:/run/user/1000/pulse" shared_volume=${HOME}/git/vendor/enigmacurry/daw shared_mount=/app workdir=/app/projects'
+alias daw='shell_container docker=podman template=daw builddir=${HOME}/git/vendor/enigmacurry/daw dockerfile=${HOME}/git/vendor/enigmacurry/daw/Dockerfile docker_args="--volume=/run/user/$(id -u)/pulse:/run/user/1000/pulse" shared_volume=${HOME}/git/vendor/enigmacurry/daw shared_mount=/daw workdir=/daw/projects'
 ```
 
 (See the shell_container
@@ -62,7 +62,7 @@ You should be able to hear sound through your host OS pulseaudio server.
 You can edit any of the files in the host project directory
 (`~/git/vendor/enigamcurry/daw`) using your regular editor on your host. This
 directory is a shared volume (`shared_volume`) mounted directly inside the
-container at `/app` (`shared_mount`), so these files are synced to the container
+container at `/daw` (`shared_mount`), so these files are synced to the container
 automatically.
 
 You can quit the shell by pressing `Ctrl-D` or typing `exit`.
@@ -106,8 +106,8 @@ PULSEAUDIO_SOCKET=/run/user/$(id -u)/pulse
 
 docker run --rm -it \
     -v ${PULSEAUDIO_SOCKET}:/run/user/1000/pulse \
-    -v ~/git/vendor/enigmacurry/daw:/app \
-    --workdir=/app/projects \
+    -v ~/git/vendor/enigmacurry/daw:/daw \
+    --workdir=/daw/projects \
     --entrypoint=/bin/bash \
     enigmacurry/daw
 ```

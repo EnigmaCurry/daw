@@ -7,7 +7,6 @@ clean:
 run:
 	poetry run python
 
-
-
-
+test:
+	poetry run pytest --doctest-modules --verbose
 

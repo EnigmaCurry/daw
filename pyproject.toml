@@ -11,6 +11,7 @@ python = "^3.10"
 pydub = "^0.25.1"
 simpleaudio = "^1.0.4"
 Cython = "^0.29.24"
+pytest = "^6.2.5"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.931"
