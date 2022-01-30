@@ -25,9 +25,9 @@ def load_audio(path: str, convert_16=False) -> AudioSegment:
         ## Convert to 16 bit .wav before trying to load it
         tmp_wav = tempfile.mktemp(prefix='convert_',suffix='.wav')
         try:
-            logger.info("Converting sample to pcm_s16le")
-            p = subprocess.run(['ffmpeg', '-i', path, '-acodec', 'pcm_s16le',
-                                tmp_wav], check=True, capture_output=True)
+            logger.debug("Converting sample to pcm_s16le")
+            p = subprocess.run(['ffmpeg', '-i', path, '-acodec', 'pcm_s16le', tmp_wav],
+                               check=True, capture_output=True)
         except subprocess.CalledProcessError as e:
             logger.error(p.stdout)
             raise e
@@ -39,12 +39,12 @@ def load_audio(path: str, convert_16=False) -> AudioSegment:
             except FileNotFoundError:
                 pass
     else:
-        track = AudioSegment.from_file(
-            path, format=format)
+        track = AudioSegment.from_file(path, format=format)
     return track
 
 def play(audio: AudioSegment):
-    logger.info(f"Playing: {time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds))} ({audio.duration_seconds} seconds)")
+    logger.info(f"Playing: {time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds))}"
+                f" ({audio.duration_seconds} seconds)")
     pydub_play(audio)
 
 def save_audio(audio, directory, prefix=""):

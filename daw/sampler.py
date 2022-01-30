@@ -1,5 +1,7 @@
+import time
 import math
 import re
+import sys
 import os
 from .audio import load_audio, play
 
@@ -14,42 +16,67 @@ class NoteParseError(Exception):
 class ChromaticGapError(Exception):
     pass
 
-def load_samples(directory, chromatic=False):
+def load_samples(directory, chromatic=False, convert_16=False, limit=sys.maxsize, offset=0, choose=None):
     """
     Load all the .wav files in the given directory
 
     if chromatic==True, assert that files have chromatic key names
+    if convert_16==True, convert input files to pcm_s16le
+    limit will limit the number of files loaded
+    offset will skip the first n files
+    choose is a direct list of note names desired, ignoring limit and offset
     """
     samples={}
     files = sorted([f for f in os.listdir(directory) if f.lower().endswith('.wav')])
-    logger.info(f"Loading {len(files)} samples from {directory} ... ")
-    if chromatic:
-        note_files = order_names_chromatic(files)
-        files = [f['name'] for f in note_files]
-    for wav in files:
-        if chromatic:
-            note, octave = parse_note(wav)
-            samples[f"{note}{octave}"] = load_audio(os.path.join(directory,wav))
-        else:
-            samples[wav] = load_audio(os.path.join(directory,wav))
+    def log_file_details(wav, audio, key=""):
+        logger.info(f"Loaded sample: '{key}' {time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds))}"
+                    f" ({audio.duration_seconds:.3f} seconds) ({os.path.basename(wav)})")
 
-    ## Check for gaps:
-    if chromatic:
-        for ((note, octave), f) in zip(chromatic_seq((note_files[0]['note'], note_files[0]['octave']),
-                                              (note_files[-1]['note'], note_files[-1]['octave'])),
-                                note_files):
+    if choose is not None:
+        logger.info(f"Loading {len(choose)} samples from {directory} ... ")
+        note_files = {k:v for k,v in [(f'{x["note"]}{x["octave"]}', x) for x in order_names_chromatic(files)]}
+        for note in choose:
+            wav = os.path.join(directory, note_files[note]['name'])
+            s = samples[note] = load_audio(wav, convert_16=convert_16)
+            log_file_details(wav, s, key=note)
+    elif chromatic:
+        note_files = order_names_chromatic(files)[offset:offset+limit]
+        files = [f['name'] for f in note_files]
+        logger.info(f"Loading {len(files)} samples from {directory} ... ")
+        for wav in files:
+            note, octave = parse_note(wav)
+            key = f"{note}{octave}"
+            s = samples[key] = load_audio(os.path.join(directory,wav), convert_16=convert_16)
+            log_file_details(wav, s, key)
+
+        ## Check for gaps:
+        for ((note, octave), f) in zip(
+                chromatic_seq((note_files[0]['note'], note_files[0]['octave']),
+                              (note_files[-1]['note'], note_files[-1]['octave'])),
+                note_files):
             if f['note'] != note or f['octave'] != octave:
-                #raise ChromaticGapError(f"{directory} - Missing note file: {note}{octave}")
-                pass
+                raise ChromaticGapError(f"{directory} - Missing note file: {note}{octave}")
+    else:
+        files = files[offset:offset+limit]
+        logger.info(f"Loading {len(files)} samples from {directory} ... ")
+        for wav in files:
+            s = samples[wav] = load_audio(os.path.join(directory,wav), convert_16=convert_16)
+            log_file_details(wav, s, key=os.path.basename(wav))
+
+
     return samples
 
 def chromatic_seq(start=('C', 0), end=('C', 6)):
     """
-    Generate the full chromatic sequence of notes from start to end.
+    Generate the full chromatic sequence of note tuples from start to end.
 
     >>> list(chromatic_seq(('G', 3), ('A#', 4)))
     [('G', 3), ('G#', 3), ('A', 4), ('A#', 4)]
     """
+    if type(start) == str:
+        start = parse_note(start)
+    if type(end) == str:
+        end = parse_note(end)
     note = start
     yield note
     while note_names.index(note[0]) < note_names.index(end[0]) \
@@ -59,6 +86,15 @@ def chromatic_seq(start=('C', 0), end=('C', 6)):
         else:
            note = (note_names[note_names.index(note[0])+1], note[1])
         yield note
+
+def note_span(start="C0", end="C6"):
+    """
+    Generate the full chromatic sequence of note names from start to end
+
+    >>> list(chromatic_seq('G3', 'A#4'))
+    ['G3', 'G#3', 'A4', 'A#4']
+    """
+    return [f"{note}{octave}" for note, octave in chromatic_seq(start, end)]
 
 def parse_note(string):
     """
@@ -95,7 +131,7 @@ def adsr(audio, attack, decay, sustain, release, loop_length=float("inf"), hold=
     hold is the output length for the attack+decay+sustain in milliseconds.
     (sustain will loop if longer than loop_length).
     """
-    
+
     attack_part = audio[:attack].fade(from_gain=-120, duration=attack, start=0)
     decay_part = audio[attack:attack+decay].fade(from_gain=0, to_gain=sustain, duration=decay, end=float("inf"))
     sustain_part = audio[(attack+decay):(attack+decay+loop_length)] + sustain
