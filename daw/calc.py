@@ -33,9 +33,3 @@ def calc_bpm(duration_ms, bars=4, beats=4):
     beat_ms = (duration_ms / bars) / beats
     duration_beats = duration_ms / beat_ms
     return bpm(duration_beats * (60e3 / duration_ms))
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

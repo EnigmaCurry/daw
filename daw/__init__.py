@@ -1,7 +1,6 @@
 import logging
 
-from . import chop
-from . import audio
-from . import sampler
+import os
+from . import chop, audio, sampler, effects
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=os.getenv("DAW_LOG_LEVEL", "INFO").upper())

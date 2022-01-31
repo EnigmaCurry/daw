@@ -11,3 +11,5 @@ dist
 /.config/
 __pycache__
 /.python_history
+/.ipython/
+/.cache/

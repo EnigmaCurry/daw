@@ -163,54 +163,5 @@ def order_names_chromatic(names):
     )
 
 
-def adsr(
-    audio,
-    attack,
-    decay,
-    sustain,
-    release,
-    loop_length=float("inf"),
-    hold=0,
-    ping_pong=False,
-):
-    """
-    Render audio sample with a linear ADSR applied to the output volume.
-
-    attack, decay, release, loop_length, and hold are in terms of milliseconds.
-    sustain is in terms of relative gain in dB. So usually 0 or a negative number.
-    loop_length is the length of the sustain portion of the input clip.
-    hold is the output length for the attack+decay+sustain in milliseconds.
-    (sustain will loop if longer than loop_length).
-    """
-
-    attack_part = audio[:attack].fade(from_gain=-120, duration=attack, start=0)
-    decay_part = audio[attack : attack + decay].fade(
-        from_gain=0, to_gain=sustain, duration=decay, end=float("inf")
-    )
-    sustain_part = audio[(attack + decay) : (attack + decay + loop_length)] + sustain
-    hold -= attack + decay
-    if hold > sustain_part.duration_seconds * 1000:
-        if ping_pong:
-            sustain_part = (
-                (sustain_part + sustain_part.reverse())
-                * (math.ceil(hold / (sustain_part.duration_seconds * 1000) / 2))
-            )[:hold]
-        else:
-            sustain_part = (
-                sustain_part
-                * (math.ceil(hold / (sustain_part.duration_seconds * 1000)))
-            )[:hold]
-    else:
-        sustain_part = sustain_part[:hold]
-    if loop_length == 0:
-        offset = attack + decay
-    else:
-        offset = (hold % loop_length) + attack + decay
-    release_part = audio[offset : offset + release].fade(
-        from_gain=sustain, to_gain=-120, duration=release, end=float("inf")
-    )
-    return attack_part + decay_part + sustain_part + release_part
-
-
 def apply_to_samples(samples, func):
-    return {k: func(audio) for k, audio in samples.items()}
+    return {key: func(audio, key) for key, audio in samples.items()}

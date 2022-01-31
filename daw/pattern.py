@@ -22,9 +22,3 @@ def random_twiddle(limit, max):
             random.randint(0, max),
             random.randint(0, max),
         ) * random.choice((2, 4))
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()

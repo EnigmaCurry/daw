@@ -18,6 +18,7 @@ RUN apt-get update && \
 
 ENV HOME=${APP_DIRECTORY}
 ENV PYTHONPATH=${APP_DIRECTORY}
+ENV DAW_LOG_LEVEL=INFO
 
 ## Install the application code:
 ## (commented out in DEV mode, because will just mount this directory from host)
