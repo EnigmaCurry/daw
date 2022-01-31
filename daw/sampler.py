@@ -3,7 +3,8 @@ import math
 import re
 import sys
 import os
-from .audio import load_audio, play
+from .audio import load_audio, play, AudioSegment
+from . import effects
 
 note_pattern = re.compile("([A-G]#?)(-?[0-9])")
 note_names = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
@@ -165,3 +166,47 @@ def order_names_chromatic(names):
 
 def apply_to_samples(samples, func):
     return {key: func(audio, key) for key, audio in samples.items()}
+
+
+def sampler(samples, attack, decay, sustain, release, loop_length, loop_mode="loop"):
+    def envelope(key, hold):
+        if type(key) == "str":
+            sample = samples[key]
+        else:
+            sample = list(samples.values())[key]
+        return effects.adsr(
+            sample, attack, decay, sustain, release, loop_length, hold, loop_mode
+        )
+
+    return envelope
+
+
+def compose(sampler, seq, slice_time=1000, release_time=0):
+    """
+    Sequence a sampler returning a mixed AudioSegment.
+    """
+    note_hold_times = []  # [(sample_index, start_time, hold_time), ...]
+    duration = (len(seq) * slice_time) + release_time
+    if type(seq) == str:
+        last_char = "."
+        t = 0
+        for char in seq:
+            if char == ".":
+                # Release or play nothing
+                pass
+            elif char == "-":
+                # Continue to hold the last sample, updating the last hold_time:
+                sample_index, start_time, hold_time = note_hold_times[-1]
+                note_hold_times[-1] = (sample_index, start_time, hold_time + slice_time)
+            elif re.match("[0-9A-F]", char):
+                # Play new sample
+                note_hold_times.append((int(char, 16), t, slice_time))
+            last_char = char
+            t += slice_time
+    else:
+        raise NotImplementedError("TODO: sequence generators")
+
+    track = AudioSegment.silent(duration=duration)
+    for sample_index, start_time, hold_time in note_hold_times:
+        track = track.overlay(sampler(sample_index, hold_time), position=start_time)
+    return track
