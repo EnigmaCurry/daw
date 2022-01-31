@@ -12,26 +12,31 @@ from . import calc
 from . import pattern
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def chop(audio: AudioSegment, bpm, bars, beats=4, fade_in=0, fade_out=0):
     segment_ms = round(calc.bpm(bpm).beat_ms * beats * bars)
-    total_bars = calc.count_bars(audio.duration_seconds*1000, bpm, beats)
+    total_bars = calc.count_bars(audio.duration_seconds * 1000, bpm, beats)
     total_segments = math.ceil(total_bars / bars)
     logger.info(f"Chopping audio: {segment_ms}ms * {total_segments}, fade_in={fade_in}")
     sections = []
     for i in range(total_segments):
         offset = fade_in if i > 0 else 0
-        sections.append(audio[(i * segment_ms) - offset:
-                              (i * segment_ms + segment_ms)])
+        sections.append(
+            audio[(i * segment_ms) - offset : (i * segment_ms + segment_ms)]
+        )
         if fade_out != 0:
             sections[i] = sections[i].fade_out(fade_out)
     return sections
 
+
 def reduce_slices(slices):
     def chunks(lst, n):
-        for i in range(0,len(lst), n):
-            yield lst[i:i+n]
+        for i in range(0, len(lst), n):
+            yield lst[i : i + n]
+
     def reduce(slices):
         new_slices = []
         for slice_pair in chunks(slices, 2):
@@ -43,8 +48,10 @@ def reduce_slices(slices):
             return new_slices
         else:
             return reduce(new_slices)
+
     logger.info(f"Reducing {len(slices)} slices into one audio segment ...")
     return reduce(slices)[0]
+
 
 def sequence(slices, seq, fade_in=0):
     logger.info(f"Sequencing {len(seq)} segments: {seq}")
@@ -65,14 +72,16 @@ def sequence(slices, seq, fade_in=0):
     new_audio = reduce_slices(mix_slices)
     return new_audio
 
+
 def test():
     from .audio import load_audio, save_audio, play
+
     track = load_audio("~/Music/the city - myrcury.wav")
     bpm = 147
     date = time.strftime("%y-%m-%d")
     rnd_str = str(uuid.uuid1())[:5]
-    out_format="mp3"
-    out_filename=f"{date}-chop.{rnd_str}.{out_format}"
+    out_format = "mp3"
+    out_filename = f"{date}-chop.{rnd_str}.{out_format}"
 
     bars = 0.0625
     fade_in = 1
@@ -84,8 +93,9 @@ def test():
     pat = pat[:-32]
     new_track = sequence(slices, pat, fade_in)
     new_track.overlay(new_track.invert_phase(), position=10)
-    #save_audio(new_track, "~/Music", "21-11-01.e.the-city.chop")
+    # save_audio(new_track, "~/Music", "21-11-01.e.the-city.chop")
     play(new_track)
+
 
 if __name__ == "__main__":
     test()

@@ -1,6 +1,7 @@
 # https://stackoverflow.com/questions/63679315/how-to-use-cython-with-poetry/63679316#63679316
 # See if Cython is installed
 import os
+
 try:
     from Cython.Build import cythonize
 # Do nothing if Cython is not available
@@ -8,6 +9,8 @@ except ImportError:
     # Got to provide this function. Otherwise, poetry will fail
     def build(setup_kwargs):
         pass
+
+
 # Cython is installed. Compile
 else:
     from setuptools import Extension
@@ -17,19 +20,19 @@ else:
     # This function will be executed in setup.py:
     def build(setup_kwargs):
         # The file you want to compile
-        extensions = [
-            "daw/wav.pyx"
-        ]
+        extensions = ["daw/wav.pyx"]
 
         # gcc arguments hack: enable optimizations
-        os.environ['CFLAGS'] = '-O3'
+        os.environ["CFLAGS"] = "-O3"
 
         # Build
-        setup_kwargs.update({
-            'ext_modules': cythonize(
-                extensions,
-                language_level=3,
-                compiler_directives={'linetrace': True},
-            ),
-            'cmdclass': {'build_ext': build_ext}
-        })
+        setup_kwargs.update(
+            {
+                "ext_modules": cythonize(
+                    extensions,
+                    language_level=3,
+                    compiler_directives={"linetrace": True},
+                ),
+                "cmdclass": {"build_ext": build_ext},
+            }
+        )
