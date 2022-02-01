@@ -10,7 +10,7 @@ from watchgod import watch
 from asyncio import Event
 
 from .ui.main import DAW
-from .audio import play
+from .audio import play, AudioSegment
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,12 @@ class ProjectRun(threading.Thread):
     def run(self):
         module = importlib.reload(self.module)
         clip = module.main()
-        play(clip, self.shutdown_flag)
+        if type(clip) != AudioSegment:
+            logger.error(
+                f"{self.module.__name__} did not return an AudioSegment object"
+            )
+        else:
+            play(clip, self.shutdown_flag)
 
 
 class FileWatcher(threading.Thread):

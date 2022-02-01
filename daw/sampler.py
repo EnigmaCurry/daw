@@ -6,10 +6,12 @@ import os
 import hashlib
 import functools
 from .audio import load_audio, play, AudioSegment
+from .scales import get_scale, in_scale
+from .pattern import flat_tokens
 from . import effects
 
 note_pattern = re.compile("([A-G]#?)(-?[0-9])")
-note_names = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
+note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 import logging
 
@@ -114,8 +116,8 @@ def chromatic_seq(start=("C", 0), end=("C", 6)):
     """
     Generate the full chromatic sequence of note tuples from start to end.
 
-    >>> list(chromatic_seq(('G', 3), ('A#', 4)))
-    [('G', 3), ('G#', 3), ('A', 4), ('A#', 4)]
+    >>> list(chromatic_seq(('G', 3), ('C', 4)))
+    [('G', 3), ('G#', 3), ('A', 3), ('A#', 3), ('B', 3), ('C', 4)]
     """
     if type(start) == str:
         start = parse_note(start)
@@ -124,8 +126,8 @@ def chromatic_seq(start=("C", 0), end=("C", 6)):
     note = start
     yield note
     while note_names.index(note[0]) < note_names.index(end[0]) or note[1] < end[1]:
-        if note[0] == "G#":
-            note = ("A", note[1] + 1)
+        if note[0] == "B":
+            note = ("C", note[1] + 1)
         else:
             note = (note_names[note_names.index(note[0]) + 1], note[1])
         yield note
@@ -135,8 +137,8 @@ def note_span(start="C0", end="C6"):
     """
     Generate the full chromatic sequence of note names from start to end
 
-    >>> list(chromatic_seq('G3', 'A#4'))
-    ['G3', 'G#3', 'A4', 'A#4']
+    >>> list(note_span('G3', 'C4'))
+    ['G3', 'G#3', 'A3', 'A#3', 'B3', 'C4']
     """
     return tuple([f"{note}{octave}" for note, octave in chromatic_seq(start, end)])
 
@@ -172,6 +174,21 @@ def order_names_chromatic(names):
     )
 
 
+def make_scale(samples, scale):
+    """Given a chromatic list of samples, return a new list containing only the
+    samples in the given musical scale.
+
+    samples is the list of samples in chromatic order.
+    scale name is any name in the Scale Omnibus.
+    """
+
+    return {
+        note: sample
+        for i, (note, sample) in enumerate(samples.items())
+        if in_scale(i, get_scale(scale))
+    }
+
+
 def apply_to_samples(samples, func):
     return {key: func(audio, key) for key, audio in samples.items()}
 
@@ -194,25 +211,29 @@ def compose(sampler, seq, slice_time=1000, release_time=0):
     Sequence a sampler returning a mixed AudioSegment.
     """
     note_hold_times = []  # [(sample_index, start_time, hold_time), ...]
-    duration = (len(seq) * slice_time) + release_time
     if type(seq) == str:
-        last_char = "."
-        t = 0
-        for char in seq:
-            if char == ".":
-                # Release or play nothing
-                pass
-            elif char == "-":
-                # Continue to hold the last sample, updating the last hold_time:
-                sample_index, start_time, hold_time = note_hold_times[-1]
-                note_hold_times[-1] = (sample_index, start_time, hold_time + slice_time)
-            elif re.match("[0-9A-F]", char):
-                # Play new sample
-                note_hold_times.append((int(char, 16), t, slice_time))
-            last_char = char
-            t += slice_time
-    else:
-        raise NotImplementedError("TODO: sequence generators")
+        seq = list(seq)
+    last_instruction = "."
+    t = 0
+    print(flat_tokens(seq))
+    seq = flat_tokens(seq)
+    duration = (len(seq) * slice_time) + release_time
+    for instruction in seq:
+        if instruction == ".":
+            # Release or play nothing
+            pass
+        elif instruction == "-":
+            # Continue to hold the last sample, updating the last hold_time:
+            sample_index, start_time, hold_time = note_hold_times[-1]
+            note_hold_times[-1] = (sample_index, start_time, hold_time + slice_time)
+        elif type(instruction) == int:
+            # Play new sample
+            note_hold_times.append((instruction, t, slice_time))
+        elif re.match("^[0-9A-F]$", instruction):
+            # Play new sample
+            note_hold_times.append((int(instruction, 16), t, slice_time))
+        last_instruction = instruction
+        t += slice_time
 
     track = AudioSegment.silent(duration=duration)
     for sample_index, start_time, hold_time in note_hold_times:

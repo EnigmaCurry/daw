@@ -64,6 +64,7 @@ def play(audio: AudioSegment, stop_flag):
         time.sleep(0.5)
         if s.is_playing() == False:
             break
+    logger.info("Stopped")
     s.stop()
 
 
