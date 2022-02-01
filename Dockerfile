@@ -28,3 +28,5 @@ ENV DAW_LOG_LEVEL=INFO
 ## Setup audio to run through the *host* pulseaudio server:
 COPY asound.conf /etc/asound.conf
 COPY pulse-client.conf /etc/pulse/client.conf
+
+CMD ["make", "run"]

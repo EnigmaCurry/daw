@@ -4,7 +4,7 @@ import os
 import io
 import wave
 from pydub import AudioSegment
-from pydub.playback import play as pydub_play
+import simpleaudio
 import subprocess
 import tempfile
 
@@ -38,7 +38,7 @@ def load_audio(path: str, convert_16=False) -> AudioSegment:
             logger.error(p.stdout)
             raise e
         try:
-            track = AudioSegment.from_file(tmp_wav, format=format)
+            track = AudioSegment.from_file_using_temporary_files(tmp_wav, format=format)
         finally:
             try:
                 os.unlink(tmp_wav)
@@ -49,12 +49,22 @@ def load_audio(path: str, convert_16=False) -> AudioSegment:
     return track
 
 
-def play(audio: AudioSegment):
+def play(audio: AudioSegment, stop_flag):
     logger.info(
         f"Playing: {time.strftime('%H:%M:%S', time.gmtime(audio.duration_seconds))}"
         f" ({audio.duration_seconds} seconds)"
     )
-    pydub_play(audio)
+    s = simpleaudio.play_buffer(
+        audio.raw_data,
+        num_channels=audio.channels,
+        bytes_per_sample=audio.sample_width,
+        sample_rate=audio.frame_rate,
+    )
+    while not stop_flag.is_set():
+        time.sleep(0.5)
+        if s.is_playing() == False:
+            break
+    s.stop()
 
 
 def save_audio(audio, directory, prefix=""):

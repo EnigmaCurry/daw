@@ -13,3 +13,6 @@ __pycache__
 /.python_history
 /.ipython/
 /.cache/
+/textual.log
+/.local/
+textual.log

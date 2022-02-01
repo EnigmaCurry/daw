@@ -3,6 +3,8 @@ import math
 import re
 import sys
 import os
+import hashlib
+import functools
 from .audio import load_audio, play, AudioSegment
 from . import effects
 
@@ -22,6 +24,7 @@ class ChromaticGapError(Exception):
     pass
 
 
+@functools.lru_cache(maxsize=32)
 def load_samples(
     directory,
     regex=None,
@@ -31,14 +34,19 @@ def load_samples(
     offset=0,
     choose=None,
 ):
-    """
-    Load all the .wav files in the given directory
+    """Load all the .wav files in the given directory
 
+    directory is the path to the samples folder
+    regex is a regular expression to filter the filenames to load
     if chromatic==True, assert that files have chromatic key names
     if convert_16==True, convert input files to pcm_s16le
     limit will limit the number of files loaded
     offset will skip the first n files
     choose is a direct list of note names desired, ignoring limit and offset
+
+    Returns dictionary of AudioSegments with string keys based on the parsed
+    note value (eg. "D#5") if chromatic==True, otherwise the key is the
+    original filename.
     """
     samples = {}
     if regex is not None:
@@ -130,7 +138,7 @@ def note_span(start="C0", end="C6"):
     >>> list(chromatic_seq('G3', 'A#4'))
     ['G3', 'G#3', 'A4', 'A#4']
     """
-    return [f"{note}{octave}" for note, octave in chromatic_seq(start, end)]
+    return tuple([f"{note}{octave}" for note, octave in chromatic_seq(start, end)])
 
 
 def parse_note(string):
