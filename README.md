@@ -32,9 +32,8 @@ DAW_HOME=${HOME}/git/vendor/enigmacurry/daw
 # DAW_SAMPLES is a directory with samples to mount on /daw/samples:
 DAW_SAMPLES=${HOME}/Samples
 # DAW_PROJECT is the default project to load:
-DAW_PROJECT=sampler_test
-
-alias daw='shell_container persistent=false docker=podman template=daw builddir=${DAW_HOME} docker_args="-v ${DAW_SAMPLES}:/daw/samples --volume=/run/user/$(id -u)/pulse:/run/user/1000/pulse" shared_volume=${HOME}/git/vendor/enigmacurry/daw shared_mount=/daw workdir=/daw/projects command="python -m daw.main ${DAW_PROJECT}"'
+DAW_PROJECT=sampler_test_2
+alias daw='shell_container persistent=false docker=podman template=daw builddir=${DAW_HOME} docker_args="-v ${DAW_SAMPLES}:/daw/samples --volume=/run/user/$(id -u)/pulse:/run/user/1000/pulse --env LIVE_RELOAD" shared_volume=${DAW_HOME} shared_mount=/daw workdir=/daw/projects command="python -m daw.main ${DAW_PROJECT}"'
 ```
 
 (See the shell_container

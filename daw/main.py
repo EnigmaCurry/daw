@@ -5,6 +5,10 @@ import os
 import logging
 import importlib
 import threading
+from queue import Queue, Empty
+from watchgod import watch
+from asyncio import Event
+
 from .ui.main import DAW
 from .audio import play
 
@@ -21,6 +25,19 @@ class ProjectRun(threading.Thread):
         module = importlib.reload(self.module)
         clip = module.main()
         play(clip, self.shutdown_flag)
+
+
+class FileWatcher(threading.Thread):
+    def __init__(self, path, events_queue, stop_event):
+        self.path = path
+        self.events_queue = events_queue
+        self.stop_event = stop_event
+        threading.Thread.__init__(self)
+
+    def run(self):
+        logger.info(f"Watching {self.path} for changes ...")
+        for changes in watch(self.path, stop_event=self.stop_event):
+            self.events_queue.put(changes)
 
 
 class ProjectShutdown(Exception):
@@ -41,12 +58,12 @@ def shutdown_handler(signum, frame):
 
 
 def stop_handler(signum, frame):
-    logger.info(f"reload_handler: Caught signal {signal.Signals(signum)}")
+    logger.info(f"stop_handler: Caught signal {signal.Signals(signum).name}")
     raise ProjectStop
 
 
 def reload_handler(signum, frame):
-    logger.info(f"reload_handler: Caught signal {signal.Signals(signum)}")
+    logger.info(f"reload_handler: Caught signal {signal.Signals(signum).name}")
     raise ProjectReload
 
 
@@ -66,15 +83,35 @@ def main():
 
     thread = ProjectRun(module)
     thread.start()
+
+    live_reload = os.getenv("LIVE_RELOAD", "true").lower() == "true"
+    if live_reload:
+        file_change_queue = Queue()
+        file_change_stop_event = Event()
+        file_watcher = FileWatcher(
+            os.path.join("projects", f"{project}.py"),
+            file_change_queue,
+            file_change_stop_event,
+        )
+        file_watcher.start()
+
     while True:
         try:
             time.sleep(0.5)
-            # if not thread.is_alive():
-            #     break
+            if live_reload:
+                try:
+                    file_change_queue.get(timeout=0.5)
+                    raise ProjectReload
+                except Empty:
+                    pass
+                else:
+                    raise ProjectReload
         except ProjectStop:
             thread.shutdown_flag.set()
             thread.join()
+            logger.warning(f"Stopped project {project} (waiting for reload) ... ")
         except ProjectShutdown:
+            logger.warning("Shutting down ... ")
             thread.shutdown_flag.set()
             thread.join()
             break
@@ -83,6 +120,11 @@ def main():
             thread.join()
             thread = ProjectRun(module)
             thread.start()
+            logger.warning(f"Reloaded project {project}")
+
+    if live_reload:
+        file_change_stop_event.set()
+        file_watcher.join()
 
 
 if __name__ == "__main__":
