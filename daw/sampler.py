@@ -193,14 +193,29 @@ def apply_to_samples(samples, func):
     return {key: func(audio, key) for key, audio in samples.items()}
 
 
-def sampler(samples, attack, decay, sustain, release, loop_length, loop_mode="loop"):
+def sampler(
+    samples, attack, decay, sustain, release, loop_length, loop_mode="loop", offset=0
+):
     def envelope(key, hold):
-        if type(key) == "str":
-            sample = samples[key]
-        else:
-            sample = list(samples.values())[key]
+        try:
+            if type(key) == "str":
+                sample = samples[key]
+            else:
+                sample = list(samples.values())[key]
+        except IndexError:
+            raise IndexError(
+                f"Sample pack only contains {len(samples)} samples but you asked for more"
+            )
         return effects.adsr(
-            sample, attack, decay, sustain, release, loop_length, hold, loop_mode
+            sample,
+            attack,
+            decay,
+            sustain,
+            release,
+            loop_length,
+            hold,
+            loop_mode,
+            offset,
         )
 
     return envelope
@@ -215,7 +230,7 @@ def compose(sampler, seq, slice_time=1000, release_time=0):
         seq = list(seq)
     last_instruction = "."
     t = 0
-    print(flat_tokens(seq))
+    logger.info(f"Composing sequence: {seq}")
     seq = flat_tokens(seq)
     duration = (len(seq) * slice_time) + release_time
     for instruction in seq:
@@ -232,6 +247,8 @@ def compose(sampler, seq, slice_time=1000, release_time=0):
         elif re.match("^[0-9A-F]$", instruction):
             # Play new sample
             note_hold_times.append((int(instruction, 16), t, slice_time))
+        else:
+            raise RuntimeError(f"Invalid compose instruction: '{instruction}'")
         last_instruction = instruction
         t += slice_time
 

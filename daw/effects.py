@@ -14,6 +14,7 @@ def adsr(
     loop_length=float("inf"),
     hold=0,
     loop_mode="loop",
+    offset=0,
 ):
     """
     Render audio sample with a linear ADSR envelope applied to the output volume.
@@ -24,7 +25,8 @@ def adsr(
     hold is the output length for the attack+decay+sustain in milliseconds.
     (sustain will loop if longer than loop_length).
     """
-
+    if offset > 0:
+        audio = audio[offset:]
     if attack == 0:
         attack_part = AudioSegment.empty()
     else:

@@ -1,9 +1,11 @@
+from collections import namedtuple
 import uuid
 import time
 import os
 import io
 import wave
 from pydub import AudioSegment
+from pydub.effects import pan
 import simpleaudio
 import subprocess
 import tempfile
@@ -115,3 +117,21 @@ def stretch(audio: AudioSegment, factor):
     b2.close()
     a = a.set_frame_rate(orig_frame_rate)
     return a
+
+
+Track = namedtuple(
+    "MixArgument", ("audio", "start_pos", "amplify", "pan"), defaults=(0, 0, 0)
+)
+
+
+def mix(*tracks, duration=0):
+    if duration == 0:
+        for track in tracks:
+            t = track.audio.duration_seconds * 1000
+            duration = t if t > duration else duration
+    mixed = AudioSegment.silent(duration=duration)
+    for track in tracks:
+        mixed = mixed.overlay(
+            pan(track.audio + track.amplify, track.pan), position=track.start_pos
+        )
+    return mixed

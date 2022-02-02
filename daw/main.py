@@ -10,14 +10,15 @@ from watchgod import watch
 from asyncio import Event
 
 from .ui.main import DAW
-from .audio import play, AudioSegment
+from .audio import play, save_audio, AudioSegment
 
 logger = logging.getLogger(__name__)
 
 
 class ProjectRun(threading.Thread):
-    def __init__(self, module):
+    def __init__(self, module, mode="play"):
         self.module = module
+        self.mode = mode
         threading.Thread.__init__(self)
         self.shutdown_flag = threading.Event()
 
@@ -29,7 +30,16 @@ class ProjectRun(threading.Thread):
                 f"{self.module.__name__} did not return an AudioSegment object"
             )
         else:
-            play(clip, self.shutdown_flag)
+            if self.mode == "play":
+                play(clip, self.shutdown_flag)
+            elif self.mode == "save":
+                save_audio(
+                    clip,
+                    os.getenv("DAW_MUSIC", "/daw/music"),
+                    self.module.__name__.removeprefix("projects."),
+                )
+            else:
+                raise AssertionError(f"Invalid mode: {self.mode}")
 
 
 class FileWatcher(threading.Thread):
@@ -86,10 +96,13 @@ def main():
     signal.signal(signal.SIGUSR1, stop_handler)
     signal.signal(signal.SIGUSR2, reload_handler)
 
-    thread = ProjectRun(module)
+    live_reload = os.getenv("LIVE_RELOAD", "true").lower() == "true"
+    render_project = os.getenv("RENDER", "false").lower().startswith("t")
+    live_reload = live_reload if not render_project else False
+
+    thread = ProjectRun(module, mode="save" if render_project else "play")
     thread.start()
 
-    live_reload = os.getenv("LIVE_RELOAD", "true").lower() == "true"
     if live_reload:
         file_change_queue = Queue()
         file_change_stop_event = Event()
@@ -111,6 +124,8 @@ def main():
                     pass
                 else:
                     raise ProjectReload
+            if not thread.is_alive() and render_project:
+                break
         except ProjectStop:
             thread.shutdown_flag.set()
             thread.join()
