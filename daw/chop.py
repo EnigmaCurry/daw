@@ -20,7 +20,7 @@ def chop(audio: AudioSegment, bpm, bars, beats=4, fade_in=0, fade_out=0):
     segment_ms = round(calc.bpm(bpm).beat_ms * beats * bars)
     total_bars = calc.count_bars(audio.duration_seconds * 1000, bpm, beats)
     total_segments = math.ceil(total_bars / bars)
-    logger.info(f"Chopping audio: {segment_ms}ms * {total_segments}, fade_in={fade_in}")
+    logger.info(f"Chopping audio: {segment_ms}ms * {total_segments} slices ({total_bars} total bars), fade_in={fade_in}")
     sections = []
     for i in range(total_segments):
         offset = fade_in if i > 0 else 0
